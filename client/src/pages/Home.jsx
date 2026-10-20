@@ -69,7 +69,7 @@ export default function Home() {
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Asha"
+                  placeholder="e.g. Ingabire"
                   maxLength={24}
                 />
               </label>
