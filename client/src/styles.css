@@ -45,30 +45,7 @@ code { font-family: ui-monospace, monospace; background: var(--ink-3); padding: 
 .logo.small { font-size: 1.2rem; }
 .logo-dot { color: var(--velvet); font-size: .5em; vertical-align: super; margin-left: 2px; }
 
-/* ---------- Home ---------- */
-.home {
-  min-height: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden;
-  background:
-    radial-gradient(900px 500px at 85% -10%, rgba(226,72,61,.22), transparent 60%),
-    radial-gradient(700px 400px at -10% 110%, rgba(242,184,75,.10), transparent 60%),
-    var(--ink);
-}
-.marquee-lights {
-  position: absolute; inset: 0 0 auto 0; height: 6px;
-  background-image: radial-gradient(circle, var(--gold) 2px, transparent 2.5px);
-  background-size: 22px 6px; opacity: .7; animation: bulbs 1.6s steps(2) infinite;
-}
-@keyframes bulbs { 50% { opacity: .35; } }
-.home-top { padding: 28px clamp(16px, 5vw, 56px) 0; }
-.home-main { flex: 1; padding: clamp(28px, 6vw, 72px) clamp(16px, 5vw, 56px); max-width: 1180px; width: 100%; margin: 0 auto; }
-.hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(24px, 5vw, 64px); align-items: center; }
-.hero > :not(.ticket) { grid-column: 1; }
-.hero .ticket { grid-column: 2; grid-row: 1 / span 3; }
-.eyebrow { color: var(--gold); text-transform: uppercase; letter-spacing: .14em; font-size: .78rem; font-weight: 600; margin: 0 0 18px; }
-.hero h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(2.4rem, 5.6vw, 4.6rem); line-height: 1.02; letter-spacing: -.025em; margin: 0 0 20px; }
-.hero h1 em { color: var(--velvet); font-style: italic; }
-.lede { color: var(--muted); font-size: 1.1rem; line-height: 1.6; max-width: 52ch; margin: 0; }
-
+/* ---------- Ticket (Watch together tab) ---------- */
 .ticket { display: flex; background: var(--cream); color: var(--ink); border-radius: 22px; box-shadow: 0 30px 80px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.04); position: relative; }
 .ticket-body { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
 .ticket-stub {
@@ -78,7 +55,7 @@ code { font-family: ui-monospace, monospace; background: var(--ink-3); padding: 
 .ticket-stub strong { font-size: 1.6rem; letter-spacing: 0; }
 .ticket::before, .ticket::after { content: ""; position: absolute; right: 68px; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); }
 .ticket::before { top: -10px; } .ticket::after { bottom: -10px; }
-.field { display: flex; flex-direction: column; gap: 6px; font-size: .82rem; font-weight: 600; color: #5b5048; text-transform: uppercase; letter-spacing: .08em; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; font-weight: 600; color: #5b5048; }
 .ticket input, .gate-card input {
   width: 100%; background: #fff; border: 1.5px solid #e2d6c2; border-radius: 12px; padding: 13px 14px; color: var(--ink); font-size: 1rem; outline: none;
   text-transform: none; letter-spacing: 0; font-weight: 500;
@@ -90,12 +67,6 @@ code { font-family: ui-monospace, monospace; background: var(--ink-3); padding: 
 .join .btn-ghost { color: var(--ink); border-color: #cdbfa8; }
 .error { color: var(--velvet-deep); margin: 0; font-size: .9rem; font-weight: 500; }
 
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: clamp(48px, 8vw, 96px); }
-.steps article { border-top: 1px solid var(--line); padding-top: 18px; }
-.step-n { font-family: var(--serif); color: var(--gold); font-size: .95rem; }
-.steps h3 { font-family: var(--serif); font-weight: 500; font-size: 1.35rem; margin: 6px 0 6px; }
-.steps p { color: var(--muted); margin: 0; line-height: 1.55; }
-.home-foot { text-align: center; color: #6d6156; font-size: .82rem; padding: 24px; }
 
 /* ---------- Gate (name prompt) ---------- */
 .gate { min-height: 100%; display: grid; place-items: center; padding: 16px; background: radial-gradient(600px 400px at 50% 0%, rgba(226,72,61,.2), transparent 70%), var(--ink); }
@@ -214,9 +185,6 @@ code { font-family: ui-monospace, monospace; background: var(--ink-3); padding: 
 
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; }
-  .hero .ticket { grid-column: 1; grid-row: auto; }
-  .steps { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .room, .room.chat-closed {

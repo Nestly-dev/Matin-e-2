@@ -1,0 +1,17 @@
+# Render reads this file to set up Matinée automatically ("Blueprint").
+# One web service: builds the React site, then runs the Node server that also serves it.
+services:
+  - type: web
+    name: matinee
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit # every push to GitHub redeploys
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      # Movie listings: paste your TMDB "API Read Access Token" in the Render dashboard.
+      - key: TMDB_READ_TOKEN
+        sync: false

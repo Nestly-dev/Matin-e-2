@@ -4,6 +4,7 @@ import { socket, clientId } from "../socket.js";
 import { useScreenShare, QUALITY } from "../useScreenShare.js";
 import { useVoice } from "../useVoice.js";
 import SyncStage, { syncSnapshot } from "../SyncStage.jsx";
+import { rememberRoom } from "../catalog.js";
 
 const EMOJIS = ["😂", "😱", "😭", "❤️", "🔥", "🍿"];
 const canShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
@@ -26,6 +27,7 @@ export default function Room() {
   const [offline, setOffline] = useState(false); // our own connection to the server dropped
   const [mode, setMode] = useState("share"); // "share" = screen share, "sync" = movie sync
   const [sync, setSync] = useState(null);
+  const [pick, setPick] = useState(null); // "tonight's pick" if the room was opened from a movie
   const lastSync = useRef(null); // last known movie-sync state, to restore after a server restart
 
   const { isSharer, localStream, remoteStream, connState, hasAudio, quality, setQuality, stats, startShare, stopShare, reconnect, reconcile } =
@@ -52,6 +54,8 @@ export default function Room() {
         setSharerId(res.state.sharerId);
         setMode(res.state.mode);
         setSync(res.state.sync);
+        setPick(res.state.pick || null);
+        rememberRoom(roomId, res.state.pick);
         setJoined(true);
         reconcileRef.current(res.state.sharerId);
         // Server forgot the movie (it restarted) but we still know it: put it back.
@@ -71,6 +75,7 @@ export default function Room() {
       setSharerId(s.sharerId);
       setMode(s.mode);
       setSync(s.sync);
+      setPick(s.pick || null);
     };
     // A small heads-up when someone else controls the movie.
     const onSyncEvent = (e) => {
@@ -228,6 +233,12 @@ export default function Room() {
         <div className="room-code" title="Room code">
           <span className="label">Room</span> {roomId}
         </div>
+        {pick && (
+          <span className="pick-chip" title={`Tonight's pick: ${pick.title}`}>
+            {pick.poster && <img src={pick.poster} alt="" />}
+            <span>Tonight</span> <b>{pick.title}</b>
+          </span>
+        )}
         {offline && <span className="reconnecting">Reconnecting…</span>}
         {voice.needsUnlock && (
           <button className="btn btn-ghost btn-sm unlock" onClick={voice.unlock}>🔊 Tap to hear voices</button>
@@ -252,7 +263,7 @@ export default function Room() {
 
       <main className="stage-wrap">
         {mode === "sync" ? (
-          <SyncStage sync={sync} duck={voice.othersSpeaking} floaters={floaters} flash={flash} members={members} />
+          <SyncStage sync={sync} duck={voice.othersSpeaking} floaters={floaters} flash={flash} members={members} pick={pick} />
         ) : (
         <Stage
           isSharer={isSharer}

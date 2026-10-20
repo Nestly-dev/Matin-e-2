@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { socket, clientId } from "./socket.js";
 import { iceServers } from "./ice.js";
 
-
+/**
+ * Quality presets the sharer can switch between live.
+ * - maxBitrate: the most data per second we let the video use. More bits = sharper picture.
+ * - degradation: what Chrome sacrifices when the network or CPU can't keep up.
+ *     "maintain-resolution" -> keep it sharp, drop some frames
+ *     "balanced"            -> a bit of both
+ *     "maintain-framerate"  -> keep motion smooth, lower the resolution
+ */
 export const QUALITY = {
   // Default. Measures the upload speed every 2s and picks the resolution that fits it (see AUTO_LADDER).
   auto: { label: "Auto", maxBitrate: 6_000_000, maxFramerate: 30, degradation: "balanced", scaleDown: 1, adaptive: true },

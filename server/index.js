@@ -13,6 +13,7 @@ const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const { Server } = require("socket.io");
+const { catalogRouter, isTmdbImage } = require("./catalog");
 
 const PORT = process.env.PORT || 4000;
 // How long someone can be disconnected before we treat them as gone.
@@ -64,7 +65,7 @@ function cleanSource(src) {
 function getRoom(roomId) {
   let room = rooms.get(roomId);
   if (!room) {
-    room = { members: new Map(), sharerId: null, mode: "share", sync: freshSync() };
+    room = { members: new Map(), sharerId: null, mode: "share", sync: freshSync(), pick: null };
     rooms.set(roomId, room);
   }
   return room;
@@ -78,6 +79,7 @@ function roomSnapshot(roomId) {
     sharerId: room.sharerId,
     mode: room.mode,
     sync: room.sync,
+    pick: room.pick,
     members: [...room.members].map(([id, m]) => ({ id, name: m.name, color: m.color, online: !!m.socketId, mic: !!m.mic })),
   };
 }
@@ -110,12 +112,34 @@ function removeMember(roomId, clientId) {
 }
 
 // --- REST: create a room / check a room exists ---
+// "Tonight's pick": the movie a room was opened for (from the browse page). Display only.
+function cleanPick(p) {
+  if (!p || typeof p !== "object" || !Number.isInteger(p.id)) return null;
+  return {
+    id: p.id,
+    type: p.type === "tv" ? "tv" : "movie",
+    title: String(p.title || "").slice(0, 120),
+    year: Number.isInteger(p.year) ? p.year : null,
+    poster: isTmdbImage(p.poster) ? p.poster : null,
+    backdrop: isTmdbImage(p.backdrop) ? p.backdrop : null,
+  };
+}
+
 app.post("/api/rooms", (req, res) => {
   let id = makeRoomId();
   while (rooms.has(id)) id = makeRoomId();
-  getRoom(id);
+  const room = getRoom(id);
+  room.pick = cleanPick(req.body?.pick);
+  // Rooms opened for a specific movie start in Movie sync, the full-quality mode.
+  if (room.pick) room.mode = "sync";
   res.json({ roomId: id });
 });
+
+// Movie listings (trending, new releases, search…) — see catalog.js
+app.use("/api/catalog", catalogRouter);
+
+// Render pings this to check the server is alive before sending people to it.
+app.get("/api/health", (req, res) => res.json({ ok: true, rooms: rooms.size }));
 
 app.get("/api/rooms/:id", (req, res) => {
   const room = rooms.get(req.params.id);

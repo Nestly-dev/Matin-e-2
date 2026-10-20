@@ -2,6 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { socket, clientId } from "./socket.js";
 import { iceServers } from "./ice.js";
 
+/**
+ * Voice chat between everyone in the room.
+ *
+ * How it works, in plain terms:
+ * - Every pair of people gets its own small audio connection ("a phone line"), set up as soon
+ *   as both are in the room, even with mics off. That way, turning a mic on is instant:
+ *   we just plug the mic into lines that already exist (replaceTrack), no re-dialing.
+ * - To avoid both sides dialing each other at once, only one side of each pair makes the call:
+ *   whoever has the alphabetically smaller ID. The other side can only ask to be called.
+ * - Speaking detection runs locally: we measure how loud each incoming voice is ~8 times a second.
+ */
 
 const SPEAK_THRESHOLD = 0.012; // loudness (RMS) above which we call it "speaking"
 const HOLD_MS = 450; // keep the "speaking" glow briefly so it doesn't flicker between words

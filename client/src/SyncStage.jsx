@@ -27,7 +27,7 @@ function srtToVtt(text) {
   return body.trimStart().startsWith("WEBVTT") ? body : `WEBVTT\n\n${body}`;
 }
 
-export default function SyncStage({ sync, duck, floaters, flash, members }) {
+export default function SyncStage({ sync, duck, floaters, flash, members, pick }) {
   const videoRef = useRef(null);
   const boxRef = useRef(null);
   const hlsRef = useRef(null);
@@ -269,14 +269,20 @@ export default function SyncStage({ sync, duck, floaters, flash, members }) {
       </video>
 
       {!local && (
-        <div className="stage-empty sync-pick">
+        <div className={`stage-empty sync-pick ${pick?.backdrop ? "has-pick" : ""}`}
+          style={pick?.backdrop ? { "--pick-bg": `url("${pick.backdrop}")` } : undefined}>
           <div className="curtain" aria-hidden="true" />
-          <span className="eyebrow">Movie sync · full quality for everyone</span>
-          <h2>{source ? `The room is watching “${source.name}”` : "Pick tonight's movie"}</h2>
+          <h2>
+            {source ? `The room is watching “${source.name}”`
+              : pick ? `Tonight: ${pick.title}${pick.year ? ` (${pick.year})` : ""}`
+              : "Pick tonight's movie"}
+          </h2>
           <p>
             {source
               ? `Load your own copy and you'll jump straight to where ${sourceOwner || "they"} are${source.duration ? ` (${fmt(source.duration)} long)` : ""}.`
-              : "Everyone plays their own copy, so it's full HD no matter how slow the internet is. Matinée just keeps you together."}
+              : pick
+                ? `Load your copy of ${pick.title}. Everyone plays their own copy in full quality, and Matinée keeps you at the same moment.`
+                : "Everyone plays their own copy, so it's full HD no matter how slow the internet is. Matinée just keeps you together."}
           </p>
           <div className="pick-options">
             <label className="btn btn-primary">

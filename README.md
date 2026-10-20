@@ -57,3 +57,18 @@ Metered.ca and Twilio both offer TURN; Metered has a free tier.
 - Up to 8 people per room. The sharer uploads one copy of the stream per viewer, so for 1–3 friends it's great; for big groups you'd need a media server (SFU).
 - Netflix, Disney+ and similar block screen capture (you'll see a black screen). Stremio and most sites without DRM work.
 - Rooms live in memory, so restarting the server clears them (links still work, since the room is recreated on join).
+
+## Movie listings (TMDB)
+
+The Home, Movies and TV shows tabs get trending, new and upcoming titles from TMDB (The Movie Database).
+It's free for non-commercial projects.
+
+1. Make an account at themoviedb.org → Settings → API → request a key.
+2. Copy the **API Read Access Token** (the long one).
+3. Render → your service → Environment → add `TMDB_READ_TOKEN` = that token → Save.
+   Locally: `TMDB_READ_TOKEN=... npm start`.
+4. Optional: `TMDB_REGION=RW` (or US, GB…) for "New in cinemas" and "Coming soon" in your country.
+
+The key stays on the server; the browser only talks to `/api/catalog`. Without a key, the tabs show setup steps and everything else still works.
+
+TMDB requires credit: the footer shows the notice. Download TMDB's official logo from their site and save it unchanged as `client/public/tmdb-logo.svg` to show it there.
