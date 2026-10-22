@@ -19,6 +19,8 @@ export default function Room() {
   const [sharerId, setSharerId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
+  const [replyTo, setReplyTo] = useState(null); // the message being replied to, if any
+  const draftRef = useRef(null);
   const [floaters, setFloaters] = useState([]);
   const [toast, setToast] = useState("");
   const [chatOpen, setChatOpen] = useState(true);
@@ -55,6 +57,14 @@ export default function Room() {
         setMode(res.state.mode);
         setSync(res.state.sync);
         setPick(res.state.pick || null);
+        // Recent chat from the server, merged with what we already have (no duplicates).
+        if (res.history?.length) {
+          setMessages((prev) => {
+            const seen = new Set(prev.map((m) => m.id));
+            const add = res.history.filter((m) => !seen.has(m.id)).map((m) => ({ kind: "chat", ...m }));
+            return add.length ? [...add, ...prev].sort((a, b) => (a.at || 0) - (b.at || 0)).slice(-200) : prev;
+          });
+        }
         rememberRoom(roomId, res.state.pick);
         setJoined(true);
         reconcileRef.current(res.state.sharerId);
@@ -183,7 +193,8 @@ export default function Room() {
   const sendChat = (e) => {
     e.preventDefault();
     if (!draft.trim()) return;
-    socket.emit("chat", { text: draft });
+    socket.emit("chat", { text: draft, replyTo: replyTo?.id || null });
+    setReplyTo(null);
     setDraft("");
   };
 
@@ -334,9 +345,21 @@ export default function Room() {
           <h3>Lobby chat</h3>
           <span>{members.length} here</span>
         </div>
-        <ChatList messages={messages} selfId={selfId} />
+        <ChatList messages={messages} selfId={selfId}
+          onReply={(m) => { setReplyTo(m); draftRef.current?.focus(); }} />
+        {replyTo && (
+          <div className="reply-bar">
+            <span className="reply-bar-text">
+              Replying to <b style={{ color: replyTo.color }}>{replyTo.from === selfId ? "yourself" : replyTo.name}</b>
+              <span className="reply-bar-quote">{replyTo.text}</span>
+            </span>
+            <button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">✕</button>
+          </div>
+        )}
         <form className="chat-form" onSubmit={sendChat}>
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Say something…" maxLength={500} />
+          <input ref={draftRef} value={draft} onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape" && replyTo) setReplyTo(null); }}
+            placeholder={replyTo ? `Reply to ${replyTo.from === selfId ? "yourself" : replyTo.name}…` : "Say something…"} maxLength={500} />
           <button className="btn btn-primary btn-sm" type="submit">Send</button>
         </form>
       </aside>
@@ -503,23 +526,46 @@ function Stage({ isSharer, localStream, remoteStream, connState, sharerName, som
   );
 }
 
-function ChatList({ messages, selfId }) {
+function ChatList({ messages, selfId, onReply }) {
   const endRef = useRef(null);
+  const listRef = useRef(null);
+
+  // Tapping a quote scrolls to the original message and briefly highlights it.
+  const jumpTo = (id) => {
+    const el = listRef.current?.querySelector(`[data-msg="${CSS.escape(id)}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.remove("flash");
+    void el.offsetWidth; // restart the highlight if it's tapped twice
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1600);
+  };
   // Braces matter: an effect may only return a cleanup function. Newer Chrome makes
   // scrollIntoView return a Promise, which React would later try to call and crash.
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   return (
-    <div className="chat-list">
+    <div className="chat-list" ref={listRef}>
       {messages.length === 0 && <p className="chat-empty">No messages yet. Say hi 👋</p>}
       {messages.map((m) =>
         m.kind === "system" ? (
           <p key={m.id} className="msg-system">{m.text}</p>
         ) : (
-          <div key={m.id} className={`msg ${m.from === selfId ? "mine" : ""}`}>
-            <span className="msg-name" style={{ color: m.color }}>{m.from === selfId ? "You" : m.name}</span>
-            <p>{m.text}</p>
+          <div key={m.id} className={`msg-row ${m.from === selfId ? "mine" : ""}`}>
+            <div className={`msg ${m.from === selfId ? "mine" : ""}`} data-msg={m.id}>
+              <span className="msg-name" style={{ color: m.color }}>{m.from === selfId ? "You" : m.name}</span>
+              {m.reply && (
+                <button type="button" className="msg-quote" style={{ "--qc": m.reply.color }} onClick={() => jumpTo(m.reply.id)}
+                  title="Show the original message">
+                  <b>{m.reply.from === selfId ? "You" : m.reply.name}</b>
+                  <span>{m.reply.text}</span>
+                </button>
+              )}
+              <p>{m.text}</p>
+            </div>
+            <button type="button" className="msg-reply-btn" onClick={() => onReply(m)}
+              aria-label={`Reply to ${m.from === selfId ? "your message" : m.name}`} title="Reply">↩</button>
           </div>
         )
       )}

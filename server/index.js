@@ -65,7 +65,7 @@ function cleanSource(src) {
 function getRoom(roomId) {
   let room = rooms.get(roomId);
   if (!room) {
-    room = { members: new Map(), sharerId: null, mode: "share", sync: freshSync(), pick: null };
+    room = { members: new Map(), sharerId: null, mode: "share", sync: freshSync(), pick: null, chat: [] };
     rooms.set(roomId, room);
   }
   return room;
@@ -187,7 +187,8 @@ io.on("connection", (socket) => {
     currentRoom = roomId;
     myId = id;
 
-    ack?.({ ok: true, self: id, rejoined: !!existing, state: roomSnapshot(roomId) });
+    // Recent chat comes along, so late joiners (and refreshes) see the conversation so far.
+    ack?.({ ok: true, self: id, rejoined: !!existing, state: roomSnapshot(roomId), history: room.chat });
     socket.to(roomId).emit("room-state", roomSnapshot(roomId));
     if (!existing) socket.to(roomId).emit("system", { text: `${cleanName} joined the room` });
   });
@@ -313,17 +314,27 @@ io.on("connection", (socket) => {
     io.to(currentRoom).emit("room-state", roomSnapshot(currentRoom));
   });
 
-  socket.on("chat", ({ text }) => {
+  socket.on("chat", ({ text, replyTo }) => {
     const m = me();
-    if (!m || !text?.trim()) return;
-    io.to(currentRoom).emit("chat", {
+    const room = rooms.get(currentRoom);
+    if (!m || !room || !text?.trim()) return;
+    // A reply carries a short quote of the original. We take it from the server's copy of the
+    // message (not from the sender), so nobody can put words in someone else's mouth.
+    const original = replyTo ? room.chat.find((c) => c.id === replyTo) : null;
+    const msg = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       from: myId,
       name: m.name,
       color: m.color,
-      text: String(text).slice(0, 500),
+      text: String(text).trim().slice(0, 500),
       at: Date.now(),
-    });
+      reply: original
+        ? { id: original.id, from: original.from, name: original.name, color: original.color, text: original.text.slice(0, 140) }
+        : null,
+    };
+    room.chat.push(msg);
+    if (room.chat.length > 100) room.chat.shift(); // keep only the most recent 100
+    io.to(currentRoom).emit("chat", msg);
   });
 
   socket.on("reaction", ({ emoji }) => {
