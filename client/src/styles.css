@@ -289,3 +289,9 @@ code { font-family: ui-monospace, monospace; background: var(--ink-3); padding: 
 .reply-bar button { flex: none; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: .9rem; padding: 4px; }
 .reply-bar button:hover { color: var(--cream); }
 @media (prefers-reduced-motion: reduce) { .msg.flash { animation: none; box-shadow: 0 0 0 2px var(--gold); } }
+
+/* ---------- Chat sound toggle ---------- */
+.chat-head span { margin-left: auto; }
+.sound-toggle { margin-left: 10px; align-self: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--cream); cursor: pointer; display: grid; place-items: center; }
+.sound-toggle:hover { border-color: var(--muted); }
+.sound-toggle.off { color: var(--muted); }

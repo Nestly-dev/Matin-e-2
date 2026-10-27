@@ -5,6 +5,7 @@ import { useScreenShare, QUALITY } from "../useScreenShare.js";
 import { useVoice } from "../useVoice.js";
 import SyncStage, { syncSnapshot } from "../SyncStage.jsx";
 import { rememberRoom } from "../catalog.js";
+import { playChime } from "../sound.js";
 
 const EMOJIS = ["😂", "😱", "😭", "❤️", "🔥", "🍿"];
 const canShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia;
@@ -21,6 +22,30 @@ export default function Room() {
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState(null); // the message being replied to, if any
   const draftRef = useRef(null);
+  // Chat sound on/off, remembered on this device. On by default.
+  const [chatSound, setChatSound] = useState(() => {
+    try { return localStorage.getItem("matinee-chat-sound") !== "off"; } catch { return true; }
+  });
+  const chatSoundRef = useRef(chatSound);
+  chatSoundRef.current = chatSound;
+  const lastChime = useRef(0);
+  const hiddenUnread = useRef(0);
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden && hiddenUnread.current) {
+        hiddenUnread.current = 0;
+        document.title = "Matinée — watch together";
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+  const toggleChatSound = () => {
+    const next = !chatSound;
+    setChatSound(next);
+    try { localStorage.setItem("matinee-chat-sound", next ? "on" : "off"); } catch { /* fine */ }
+    if (next) playChime("message"); // a sample, so you know what it sounds like
+  };
   const [floaters, setFloaters] = useState([]);
   const [toast, setToast] = useState("");
   const [chatOpen, setChatOpen] = useState(true);
@@ -101,7 +126,21 @@ export default function Room() {
       if (text) flashRef.current(text);
     };
     socket.on("sync-event", onSyncEvent);
-    const onChat = (m) => setMessages((prev) => [...prev.slice(-199), { kind: "chat", ...m }]);
+    const onChat = (m) => {
+      setMessages((prev) => [...prev.slice(-199), { kind: "chat", ...m }]);
+      if (m.from === clientId) return; // no sound for my own messages
+      // Chime for other people's messages, at most once every 1.5s if a burst comes in.
+      const now = Date.now();
+      if (chatSoundRef.current && now - lastChime.current > 1500) {
+        lastChime.current = now;
+        playChime(m.reply?.from === clientId ? "reply" : "message");
+      }
+      // In another tab (e.g. watching in Stremio)? Show the count in this tab's title.
+      if (document.hidden) {
+        hiddenUnread.current += 1;
+        document.title = `(${hiddenUnread.current}) Matinée`;
+      }
+    };
     const onSystem = (m) => setMessages((prev) => [...prev.slice(-199), { kind: "system", id: `${Date.now()}${Math.random()}`, ...m }]);
     const onReaction = ({ emoji }) => {
       const id = `${Date.now()}${Math.random()}`;
@@ -344,6 +383,11 @@ export default function Room() {
         <div className="chat-head">
           <h3>Lobby chat</h3>
           <span>{members.length} here</span>
+          <button type="button" className={`sound-toggle ${chatSound ? "" : "off"}`} onClick={toggleChatSound}
+            aria-pressed={chatSound} title={chatSound ? "Message sounds on (click to mute)" : "Message sounds off (click to turn on)"}
+            aria-label={chatSound ? "Mute message sounds" : "Turn on message sounds"}>
+            <BellIcon off={!chatSound} />
+          </button>
         </div>
         <ChatList messages={messages} selfId={selfId}
           onReply={(m) => { setReplyTo(m); draftRef.current?.focus(); }} />
@@ -373,6 +417,17 @@ function fmtTime(t) {
   t = Math.max(0, Math.floor(t || 0));
   const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = String(t % 60).padStart(2, "0");
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
+
+function BellIcon({ off }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      {off && <path d="M3 3l18 18" />}
+    </svg>
+  );
 }
 
 function MicIcon({ off }) {
